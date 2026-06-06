@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iPhone Liquid Weather</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            /* Background gradasi default */
+            background: linear-gradient(180deg, #1d4ed8, #3b82f6, #93c5fd);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            transition: background 1s ease;
+        }
+
+        /* Container Utama ala iPhone Screen dengan Efek Liquid Glass */
+        .weather-card {
+            width: 100%;
+            max-width: 360px;
+            padding: 30px 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border-radius: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3),
+                        inset 0 1px 2px rgba(255, 255, 255, 0.2);
+            color: white;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        /* Form Pencarian Kapsul Pintar (Anti-Potong) */
+        .search-box {
+            width: 100%;
+            display: flex;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 25px;
+            padding: 4px;
+            margin-bottom: 25px;
+        }
+
+        .search-box input {
+            flex: 1;
+            padding: 10px 16px;
+            border: none;
+            background: transparent;
+            color: white;
+            font-size: 1rem;
+            outline: none;
+            width: 100%;
+        }
+
+        .search-box input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .search-box button {
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: none;
+            background: rgba(255, 255, 255, 0.9);
+            color: #1e3a8a;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+        }
+
+        .search-box button:active {
+            transform: scale(0.95);
+            background: rgba(255, 255, 255, 1);
+        }
+
+        /* Jam Digital ala iOS */
+        .time-display {
+            font-size: 1.1rem;
+            font-weight: 500;
+            letter-spacing: 1px;
+            color: rgba(255, 255, 255, 0.85);
+            margin-bottom: 5px;
+        }
+
+        .location {
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        /* Desain Ukuran Emoji Cuaca */
+        .weather-emoji {
+            font-size: 4.5rem;
+            margin: 10px 0;
+            filter: drop-shadow(0 8px 12px rgba(0,0,0,0.2));
+            transition: transform 0.3s ease;
+        }
+        
+        .weather-emoji:hover {
+            transform: scale(1.1); /* Efek membal pas disentuh/di-hover */
+        }
+
+        .temp {
+            font-size: 5.5rem;
+            font-weight: 200;
+            margin-bottom: 10px;
+            line-height: 1;
+        }
+
+        .condition {
+            font-size: 1.1rem;
+            font-weight: 500;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 6px 18px;
+            border-radius: 20px;
+            margin-bottom: 35px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Grid Detail Info */
+        .details-grid {
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .detail-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 16px;
+            border-radius: 22px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .detail-item span:first-child {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .detail-item span:last-child {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="weather-card">
+        <div class="search-box">
+            <input type="text" id="city-input" placeholder="Masukkan nama kota..." value="Surabaya">
+            <button onclick="getWeather()">Cari</button>
+        </div>
+
+        <div class="time-display" id="clock">00:00</div>
+
+        <div class="location" id="city-name">Surabaya</div>
+        
+        <div class="weather-emoji" id="weather-icon">☀️</div>
+        
+        <div class="temp" id="temperature">--°</div>
+        <div class="condition" id="description">Memuat...</div>
+
+        <div class="details-grid">
+            <div class="detail-item">
+                <span>WindSpeed</span>
+                <span id="windspeed">-- km/h</span>
+            </div>
+            <div class="detail-item">
+                <span>moisture</span>
+                <span id="humidity">-- %</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Fungsi utama buat nembak API cuaca
+        async function getWeather() {
+            const city = document.getElementById('city-input').value;
+            if (!city) return alert('Please enter a city name first!');
+
+            document.getElementById('description').innerText = "Mencari...";
+
+            try {
+                // 1. Ambil koordinat kota via API Geocoding
+                const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=1&language=id&format=json`;
+                const geoResponse = await fetch(geoUrl);
+                const geoData = await geoResponse.json();
+
+                if (!geoData.results || geoData.results.length === 0) {
+                    alert('City not found. Please check the spelling!');
+                    document.getElementById('description').innerText = "Gagal";
+                    return;
+                }
+
+                const { latitude, longitude, name } = geoData.results[0];
+
+                // 2. Ambil data cuaca berdasarkan koordinat
+                const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m`;
+                const weatherResponse = await fetch(weatherUrl);
+                const weatherData = await weatherResponse.json();
+
+                const current = weatherData.current;
+                
+                // 3. Update data teks ke halaman
+                document.getElementById('city-name').innerText = name;
+                document.getElementById('temperature').innerText = `${Math.round(current.temperature_2m)}°`;
+                document.getElementById('windspeed').innerText = `${current.wind_speed_10m} km/h`;
+                document.getElementById('humidity').innerText = `${current.relative_humidity_2m}%`;
+
+                // 4. Update background dan emoji berdasarkan kode cuaca
+                interpretWeather(current.weather_code);
+
+            } catch (error) {
+                console.error(error);
+                alert('Failed to search weather data. Please check your internet connection!');
+            }
+        }
+
+                // Fungsi nerjemahin kode cuaca, set gradasi warna latar, dan ganti emoji (Versi English)
+        function interpretWeather(code) {
+            let desc = "Clear";
+            let bg = "linear-gradient(180deg, #1d4ed8, #3b82f6, #93c5fd)"; 
+            let icon = "☀️"; 
+
+            if (code === 0) {
+                desc = "Clear";
+                bg = "linear-gradient(180deg, #1e40af, #3b82f6, #93c5fd)";
+                icon = "☀️"; 
+            } else if (code >= 1 && code <= 3) {
+                desc = "Partly Cloudy"; // Berawan
+                bg = "linear-gradient(180deg, #475569, #64748b, #94a3b8)"; 
+                icon = "☁️"; 
+            } else if (code >= 45 && code <= 48) {
+                desc = "Foggy"; // Berkabut
+                bg = "linear-gradient(180deg, #334155, #475569, #cbd5e1)";
+                icon = "🌫️"; 
+            } else if (code >= 51 && code <= 67) {
+                desc = "Light Rain / Drizzle"; // Gerimis/Hujan Ringan
+                bg = "linear-gradient(180deg, #1e293b, #334155, #64748b)"; 
+                icon = "🌧️"; 
+            } else if (code >= 71 && code <= 99) {
+                desc = "Heavy Rain / Thunderstorm"; // Hujan Deras / Badai
+                bg = "linear-gradient(180deg, #0f172a, #1e293b, #475569)"; 
+                icon = "⛈️"; 
+            }
+
+            document.getElementById('description').innerText = desc;
+            document.getElementById('weather-icon').innerText = icon;
+            document.body.style.background = bg;
+        }
+
+        // Fungsi Update Jam Digital
+        function updateClock() {
+            const now = new Date();
+            let hours = now.getHours().toString().padStart(2, '0');
+            let minutes = now.getMinutes().toString().padStart(2, '0');
+            document.getElementById('clock').innerText = `${hours}:${minutes}`;
+        }
+        
+        setInterval(updateClock, 1000);
+        updateClock();
+        
+        // Panggil otomatis pas pertama kali buka web
+        getWeather();
+    </script>
+</body>
+</html>
